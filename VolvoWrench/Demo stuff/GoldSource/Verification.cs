@@ -35,6 +35,16 @@ namespace VolvoWrench.Demo_Stuff.GoldSource
         private ColoredTextBuffer textBuffer;
 
         /// <summary>
+        ///     Dictionaries related to HL100 kill counting
+        /// </summary>
+        // Kill Number, UUID, Monster Type
+        private Dictionary<int, (string, string, string)> MonsterTypeKillByNumber = new Dictionary<int, (string, string, string)>();
+        // Map, UUID, Monster Type
+        private Dictionary<string, List<(string, string, string)>> MonsterTypeKillByMap = new Dictionary<string, List<(string, string, string)>>();
+        // Map, UUID, Monster Name
+        private Dictionary<string, List<(string, string, string)>> MonsterNameKillByMap = new Dictionary<string, List<(string, string, string)>>();
+
+        /// <summary>
         ///     Default constructor
         /// </summary>
         public Verification()
@@ -98,12 +108,69 @@ namespace VolvoWrench.Demo_Stuff.GoldSource
         }
 
         /// <summary>
+        ///     Get the demo number from the name of the demo (i.e. demo_100.dem => 100)
+        /// </summary>
+        /// <param name="demoName">Filename of the demo</param>
+        private int demoNumberFromString(string demoName)
+        {
+            try
+            {
+                // Substring the number
+                int numberStart = demoName.LastIndexOf('_')+1;
+                int numberEnd = demoName.LastIndexOf(".");
+                string numStr = demoName.Substring(numberStart, numberEnd - numberStart);
+                return int.Parse(numStr);
+            } catch (Exception e)
+            {
+                MessageBox.Show(
+                    "Could not parse demo number from filename: " + demoName + "\n\n" + e.Message,
+                    "Error",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error
+                );
+                return int.MinValue;
+            }
+        }
+
+        /// <summary>
+        ///     Verifies the kills in an HL100 run
+        /// </summary>
+        /// <param name="files">Demo files</param>
+        /// <param name="textBuffer">Verification output log</param>
+        public void VerifyHl100Kills(string[] files, ColoredTextBuffer textBuffer)
+        {
+            // Verify they got exactly 944 kills
+            for (int i = 1; i <= 944; i++)
+            {
+                if (!MonsterTypeKillByNumber.ContainsKey(i))
+                {
+                    // Add error to last demo for missing kill
+                    string err = "HL100: Missing kill #" + i + "\n";
+                    Df[files.Last()].GsDemoInfo.ParsingErrors.Add(err);
+                    textBuffer.Append(err, Color.Red);
+                }
+            }
+
+            // Verify the last kill is Nihilanth
+            if (!MonsterTypeKillByNumber.ContainsKey(944) || MonsterTypeKillByNumber[944].Item2 != "monster_nihilanth")
+            {
+                string err = "HL100: Last kill is not nihilanth!\n";
+                Df[files.Last()].GsDemoInfo.ParsingErrors.Add(err);
+                textBuffer.Append(err, Color.Red);
+            }
+        }
+
+        /// <summary>
         ///     This is the actuall verification method
         /// </summary>
         /// <param name="files">The paths of the files</param>
         public void Verify(string[] files)
         {
+            files = files.OrderBy(f => demoNumberFromString(f)).ToArray(); // HL100 needs the demos to be parsed in order
             Df.Clear();
+            MonsterTypeKillByNumber.Clear();
+            MonsterTypeKillByMap.Clear();
+            MonsterNameKillByMap.Clear();
             mrtb.Text = $@"Please wait. Parsing demos... 0/{files.Length}";
             var curr = 0;
             foreach (var dt in files.Where(file => File.Exists(file) && Path.GetExtension(file) == ".dem"))
@@ -162,6 +229,10 @@ Human readable time:        {TimeSpan.FromSeconds(Df.Sum(x => x.Value.GsDemoInfo
                     textBuffer.Append("\n");
                     mrtb.Text = $@"Please wait. Analyzing demos... {cur++}/{files.Length}";
                     Application.DoEvents();
+                }
+                if (MonsterTypeKillByNumber.Count > 0)
+                {
+                    VerifyHl100Kills(files, textBuffer);
                 }
                 mrtb.Clear();
                 textBuffer.AppendToRichTextBox(mrtb);
@@ -904,7 +975,7 @@ Human readable time:        {TimeSpan.FromSeconds(Df.Sum(x => x.Value.GsDemoInfo
             }
 
             string gamedir = info.Value.GsDemoInfo.Header.GameDir;
-            bool gameLooksLikeTrilogy = gamedir.StartsWith("valve") || gamedir.StartsWith("gearbox") || gamedir.StartsWith("bshift");
+            bool gameLooksLikeTrilogy = gamedir.StartsWith("valve") || gamedir.StartsWith("gearbox") || gamedir.StartsWith("bshift") || gamedir.StartsWith("killcount");
 
             if (gameLooksLikeTrilogy)
             {
@@ -1117,6 +1188,68 @@ Human readable time:        {TimeSpan.FromSeconds(Df.Sum(x => x.Value.GsDemoInfo
                                   || command.ToUpper().StartsWith("STAT"))
                                 {
                                     textBuffer.Append("\t" + "Probably disallowed ¯\\_(ツ)_/¯: " + command + " — Frame: " + i + "\n");
+                                }
+                                if (command.ToUpper().Contains("REPORT_TO_DEMO"))
+                                {
+                                    try
+                                    {
+                                        // Special HL100 command to report kills to demo
+                                        string[] tokens = command.Split();
+                                        string monsterType = tokens[1];
+                                        string monsterName = tokens[2].Substring(1, tokens[2].Length - 2); // may be empty
+                                        string monsterKilledOnMap = tokens[4];
+                                        int monsterKillNumber = int.Parse(tokens[6]);
+
+                                        // Check if this kill was already gotten (implies save-reload)
+                                        if (MonsterTypeKillByNumber.ContainsKey(monsterKillNumber))
+                                        {
+                                            // Get the UUID of the old kill that was invalidated by save-reload
+                                            string oldUUID = MonsterTypeKillByNumber[monsterKillNumber].Item1;
+
+                                            // Remove from dicts
+                                            MonsterTypeKillByNumber.Remove(monsterKillNumber);
+                                            
+                                            foreach (var map in MonsterTypeKillByMap)
+                                            {
+                                                for (int j = 0; j < MonsterTypeKillByMap[map.Key].Count(); j++)
+                                                {
+                                                    if (MonsterTypeKillByMap[map.Key][j].Item1 == oldUUID)
+                                                    {
+                                                        MonsterTypeKillByMap[map.Key].RemoveAt(j);
+                                                        j--;
+                                                    }
+                                                }
+                                            }
+
+                                            foreach (var map in MonsterNameKillByMap)
+                                            {
+                                                for (int j = 0; j < MonsterNameKillByMap[map.Key].Count(); j++)
+                                                {
+                                                    if (MonsterNameKillByMap[map.Key][j].Item1 == oldUUID)
+                                                    {
+                                                        MonsterNameKillByMap[map.Key].RemoveAt(j);
+                                                        j--;
+                                                    }
+                                                }
+                                            }
+                                        }
+
+                                        string killUUID = Guid.NewGuid().ToString();
+                                        MonsterTypeKillByNumber[monsterKillNumber] = (killUUID, monsterType, info.Key);
+                                        if (!MonsterTypeKillByMap.ContainsKey(monsterKilledOnMap))
+                                        {
+                                            MonsterTypeKillByMap.Add(monsterKilledOnMap, new List<(string, string, string)>());
+                                        }
+                                        if (!MonsterNameKillByMap.ContainsKey(monsterKilledOnMap))
+                                        {
+                                            MonsterNameKillByMap.Add(monsterKilledOnMap, new List<(string, string, string)>());
+                                        }
+                                        MonsterTypeKillByMap[monsterKilledOnMap].Append((killUUID, monsterType, info.Key));
+                                        MonsterNameKillByMap[monsterKilledOnMap].Append((killUUID, monsterName, info.Key));
+                                    } catch (Exception e)
+                                    {
+                                        textBuffer.Append("\tError parsing hl100 report_to_demo in " + info.Key + ": " + e.ToString() + "\n");
+                                    }
                                 }
                                 break;
                             }
