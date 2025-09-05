@@ -141,39 +141,6 @@ namespace VolvoWrench.Demo_Stuff.GoldSource
             bool hasWarnings = false;
             const int totalKills = 944;
 
-            // Verify they got exactly totalKills kills
-            for (int i = 1; i <= totalKills; i++)
-            {
-                if (!MonsterTypeKillByNumber.ContainsKey(i))
-                {
-                    textBuffer.Append("HL100: Missing kill #" + i + "\n", Color.Yellow);
-                    hasWarnings = true;
-                }
-            }
-
-            if (MonsterTypeKillByNumber.Count() > totalKills)
-            {
-                // Add error to last demo for extra kills
-                string err = "HL100: Extra kills in run! There should only be " + totalKills + ".\n";
-                Df[files.Last()].GsDemoInfo.ParsingErrors.Add(err);
-                textBuffer.Append(err, Color.Red);
-                hasErrors = true;
-            }
-
-            // Verify the last kill is Nihilanth
-            if (!MonsterTypeKillByNumber.ContainsKey(totalKills) || MonsterTypeKillByNumber[totalKills].Item2 != "monster_nihilanth")
-            {
-                // Add error to last demo for missing kill
-                string err = "HL100: Last kill is not nihilanth or there is no " + totalKills + "th kill!\n";
-                Df[files.Last()].GsDemoInfo.ParsingErrors.Add(err);
-                textBuffer.Append(err, Color.Red);
-                hasErrors = true;
-            }
-            else
-            {
-                textBuffer.Append("\nHL100: Got 944 kills with Nihilanth as the final kill.\n\n", Color.Green);
-            }
-
             Dictionary<string, Dictionary<string, int>> referenceMonsterCountsByMap = new Dictionary<string, Dictionary<string, int>>
             {
                 { "c1a1", new Dictionary<string, int>
@@ -734,6 +701,7 @@ namespace VolvoWrench.Demo_Stuff.GoldSource
 
             Dictionary<string, Dictionary<string, int>> monsterCountsByMap = new Dictionary<string, Dictionary<string, int>>();
 
+            // Build dict of kills of by map and monster type
             foreach (var map in MonsterTypeKillByMap)
             {
                 foreach (var kill in MonsterTypeKillByMap[map.Key])
@@ -748,6 +716,50 @@ namespace VolvoWrench.Demo_Stuff.GoldSource
                     }
                     monsterCountsByMap[map.Key][kill.Item2]++;
                 }
+            }
+
+            // Dump the kills by map to the textBuffer so it can be cross referenced with the spreadsheet if needed.
+            foreach (var map in monsterCountsByMap)
+            {
+                textBuffer.Append("\nHL100: Kills on " + map.Key + "\n");
+                foreach (var kill in monsterCountsByMap[map.Key])
+                {
+                    textBuffer.Append("  " + kill.Key + ": " + kill.Value + "\n");
+                }
+            }
+            textBuffer.Append("\n");
+
+            // Verify they got exactly totalKills kills
+            for (int i = 1; i <= totalKills; i++)
+            {
+                if (!MonsterTypeKillByNumber.ContainsKey(i))
+                {
+                    textBuffer.Append("HL100: Missing kill #" + i + "\n", Color.Yellow);
+                    hasWarnings = true;
+                }
+            }
+
+            if (MonsterTypeKillByNumber.Count() > totalKills)
+            {
+                // Add error to last demo for extra kills
+                string err = "HL100: Extra kills in run! There should only be " + totalKills + ".\n";
+                Df[files.Last()].GsDemoInfo.ParsingErrors.Add(err);
+                textBuffer.Append(err, Color.Red);
+                hasErrors = true;
+            }
+
+            // Verify the last kill is Nihilanth
+            if (!MonsterTypeKillByNumber.ContainsKey(totalKills) || MonsterTypeKillByNumber[totalKills].Item2 != "monster_nihilanth")
+            {
+                // Add error to last demo for missing kill
+                string err = "HL100: Last kill is not nihilanth or there is no " + totalKills + "th kill!\n";
+                Df[files.Last()].GsDemoInfo.ParsingErrors.Add(err);
+                textBuffer.Append(err, Color.Red);
+                hasErrors = true;
+            }
+            else
+            {
+                textBuffer.Append("\nHL100: Got 944 kills with Nihilanth as the final kill.\n\n", Color.Green);
             }
 
             foreach (var map in referenceMonsterCountsByMap)
