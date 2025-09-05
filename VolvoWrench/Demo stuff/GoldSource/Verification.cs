@@ -37,12 +37,10 @@ namespace VolvoWrench.Demo_Stuff.GoldSource
         /// <summary>
         ///     Dictionaries related to HL100 kill counting
         /// </summary>
-        // Kill Number, UUID, Monster Type
+        // Kill Number : UUID, Monster Type, Demo File
         private Dictionary<int, (string, string, string)> MonsterTypeKillByNumber = new Dictionary<int, (string, string, string)>();
-        // Map, UUID, Monster Type
+        // Map : [ UUID, Monster Type, Demo File ]
         private Dictionary<string, List<(string, string, string)>> MonsterTypeKillByMap = new Dictionary<string, List<(string, string, string)>>();
-        // Map, UUID, Monster Name
-        private Dictionary<string, List<(string, string, string)>> MonsterNameKillByMap = new Dictionary<string, List<(string, string, string)>>();
 
         /// <summary>
         ///     Default constructor
@@ -139,24 +137,659 @@ namespace VolvoWrench.Demo_Stuff.GoldSource
         /// <param name="textBuffer">Verification output log</param>
         public void VerifyHl100Kills(string[] files, ColoredTextBuffer textBuffer)
         {
-            // Verify they got exactly 944 kills
-            for (int i = 1; i <= 944; i++)
+            bool hasErrors = false;
+            bool hasWarnings = false;
+            const int totalKills = 944;
+
+            // Verify they got exactly totalKills kills
+            for (int i = 1; i <= totalKills; i++)
             {
                 if (!MonsterTypeKillByNumber.ContainsKey(i))
                 {
-                    // Add error to last demo for missing kill
-                    string err = "HL100: Missing kill #" + i + "\n";
-                    Df[files.Last()].GsDemoInfo.ParsingErrors.Add(err);
-                    textBuffer.Append(err, Color.Red);
+                    textBuffer.Append("HL100: Missing kill #" + i + "\n", Color.Yellow);
+                    hasWarnings = true;
                 }
             }
 
-            // Verify the last kill is Nihilanth
-            if (!MonsterTypeKillByNumber.ContainsKey(944) || MonsterTypeKillByNumber[944].Item2 != "monster_nihilanth")
+            if (MonsterTypeKillByNumber.Count() > totalKills)
             {
-                string err = "HL100: Last kill is not nihilanth!\n";
+                // Add error to last demo for extra kills
+                string err = "HL100: Extra kills in run! There should only be " + totalKills + ".\n";
                 Df[files.Last()].GsDemoInfo.ParsingErrors.Add(err);
                 textBuffer.Append(err, Color.Red);
+                hasErrors = true;
+            }
+
+            // Verify the last kill is Nihilanth
+            if (!MonsterTypeKillByNumber.ContainsKey(totalKills) || MonsterTypeKillByNumber[totalKills].Item2 != "monster_nihilanth")
+            {
+                // Add error to last demo for missing kill
+                string err = "HL100: Last kill is not nihilanth or there is no " + totalKills + "th kill!\n";
+                Df[files.Last()].GsDemoInfo.ParsingErrors.Add(err);
+                textBuffer.Append(err, Color.Red);
+                hasErrors = true;
+            }
+            else
+            {
+                textBuffer.Append("\nHL100: Got 944 kills with Nihilanth as the final kill.\n\n", Color.Green);
+            }
+
+            Dictionary<string, Dictionary<string, int>> referenceMonsterCountsByMap = new Dictionary<string, Dictionary<string, int>>
+            {
+                { "c1a1", new Dictionary<string, int>
+                    {
+                        {"monster_headcrab", 1},
+                        {"monster_zombie", 2},
+                    }
+                },
+                { "c1a0c", new Dictionary<string, int>
+                    {
+                        {"monster_headcrab", 1},
+                    }
+                },
+                { "c1a1a", new Dictionary<string, int>
+                    {
+                        {"monster_headcrab", 1},
+                        {"monster_zombie", 2},
+                    }
+                },
+                { "c1a1f", new Dictionary<string, int>
+                    {
+                        {"monster_headcrab", 5},
+                        {"monster_zombie", 2},
+                    }
+                },
+                { "c1a1b", new Dictionary<string, int>
+                    {
+                        {"monster_houndeye", 4},
+                        {"monster_headcrab", 5},
+                        {"monster_zombie", 3},
+                        {"monster_alien_slave", 1},
+                    }
+                },
+                { "c1a1c", new Dictionary<string, int>
+                    {
+                        {"monster_headcrab", 11},
+                        {"monster_houndeye", 1},
+                        {"monster_bullchicken", 2},
+                        {"monster_barnacle", 7},
+                    }
+                },
+                { "c1a2", new Dictionary<string, int>
+                    {
+                        {"monster_headcrab", 21},
+                        {"monster_barnacle", 3},
+                        {"monster_zombie", 1},
+                        {"monster_miniturret", 1},
+                    }
+                },
+                { "c1a2d", new Dictionary<string, int>
+                    {
+                        {"monster_headcrab", 2},
+                        {"monster_zombie", 1},
+                    }
+                },
+                { "c1a2a", new Dictionary<string, int>
+                    {
+                        {"monster_headcrab", 10},
+                        {"monster_alien_slave", 12},
+                        {"monster_barnacle", 2},
+                        {"monster_miniturret", 1},
+                        {"monster_zombie", 1},
+                    }
+                },
+                { "c1a2b", new Dictionary<string, int>
+                    {
+                        {"monster_headcrab", 13},
+                        {"monster_bullchicken", 1},
+                        {"monster_alien_slave", 2},
+                        {"monster_zombie", 4},
+                    }
+                },
+                { "c1a2c", new Dictionary<string, int>
+                    {
+                        {"monster_zombie", 2},
+                        {"monster_bullchicken", 2},
+                        {"monster_headcrab", 7},
+                        {"monster_barnacle", 4},
+                    }
+                },
+                { "c1a3", new Dictionary<string, int>
+                    {
+                        {"monster_zombie", 1},
+                        {"monster_headcrab", 4},
+                        {"monster_sentry", 5},
+                        {"monster_alien_slave", 2},
+                        {"monster_human_grunt", 2},
+                    }
+                },
+                { "c1a3d", new Dictionary<string, int>
+                    {
+                        {"monster_sentry", 2},
+                        {"monster_human_grunt", 1},
+                    }
+                },
+                { "c1a3a", new Dictionary<string, int>
+                    {
+                        {"monster_human_grunt", 10},
+                        {"monster_barnacle", 11},
+                        {"monster_sentry", 3},
+                    }
+                },
+                { "c1a3b", new Dictionary<string, int>
+                    {
+                        {"monster_human_grunt", 4},
+                        {"monster_osprey", 1},
+                    }
+                },
+                { "c1a3c", new Dictionary<string, int>
+                    {
+                        {"monster_human_grunt", 2},
+                        {"monster_osprey", 1},
+                    }
+                },
+                { "c1a4", new Dictionary<string, int>
+                    {
+                        {"monster_headcrab", 7},
+                        {"monster_bullchicken", 5},
+                        {"monster_zombie", 1},
+                        {"monster_houndeye", 5},
+                    }
+                },
+                { "c1a4k", new Dictionary<string, int>
+                    {
+                        {"monster_bullchicken", 4},
+                    }
+                },
+                { "c1a4b", new Dictionary<string, int>
+                    {
+                        {"monster_bullchicken", 2},
+                        {"monster_houndeye", 6},
+                        {"monster_headcrab", 2},
+                        {"monster_zombie", 1},
+                    }
+                },
+                { "c1a4i", new Dictionary<string, int>
+                    {
+                        {"monster_zombie", 2},
+                        {"monster_barnacle", 2},
+                        {"monster_tentacle", 3},
+                    }
+                },
+                { "c1a4f", new Dictionary<string, int>
+                    {
+                        {"monster_bullchicken", 2},
+                        {"monster_houndeye", 3},
+                        {"monster_barnacle", 3},
+                        {"monster_zombie", 1},
+                    }
+                },
+                { "c1a4d", new Dictionary<string, int>
+                    {
+                        {"monster_zombie", 6},
+                        {"monster_bullchicken", 2},
+                        {"monster_headcrab", 1},
+                    }
+                },
+                { "c1a4e", new Dictionary<string, int>
+                    {
+                        {"monster_zombie", 2},
+                        {"monster_headcrab", 3},
+                    }
+                },
+                { "c1a4j", new Dictionary<string, int>
+                    {
+                        {"monster_headcrab", 1},
+                    }
+                },
+                { "c2a1", new Dictionary<string, int>
+                    {
+                        {"monster_human_grunt", 2},
+                        {"monster_alien_slave", 7},
+                        {"monster_headcrab", 9},
+                        {"monster_gargantua", 1},
+                    }
+                },
+                { "c2a1b", new Dictionary<string, int>
+                    {
+                        {"monster_alien_slave", 2},
+                        {"monster_bullchicken", 1},
+                        {"monster_human_grunt", 3},
+                        {"monster_sentry", 1},
+                    }
+                },
+                { "c2a1a", new Dictionary<string, int>
+                    {
+                        {"monster_human_grunt", 14},
+                        {"monster_headcrab", 3},
+                        {"monster_houndeye", 5},
+                        {"monster_zombie", 1},
+                    }
+                },
+                { "c2a2", new Dictionary<string, int>
+                    {
+                        {"monster_barnacle", 4},
+                    }
+                },
+                { "c2a2a", new Dictionary<string, int>
+                    {
+                        {"monster_houndeye", 5},
+                        {"monster_headcrab", 2},
+                        {"monster_bullchicken", 3},
+                        {"monster_sentry", 1},
+                        {"monster_barnacle", 4},
+                    }
+                },
+                { "c2a2b2", new Dictionary<string, int>
+                    {
+                        {"monster_bullchicken", 4},
+                        {"monster_human_grunt", 1},
+                        {"monster_headcrab", 7},
+                        {"monster_houndeye", 3},
+                        {"monster_barnacle", 3},
+                    }
+                },
+                { "c2a2b1", new Dictionary<string, int>
+                    {
+                        {"monster_human_grunt", 11},
+                        {"monster_headcrab", 2},
+                        {"monster_alien_slave", 4},
+                    }
+                },
+                { "c2a2c", new Dictionary<string, int>
+                    {
+                        {"monster_alien_slave", 8},
+                        {"monster_human_grunt", 5},
+                        {"monster_headcrab", 1},
+                    }
+                },
+                { "c2a2d", new Dictionary<string, int>
+                    {
+                        {"monster_human_grunt", 7},
+                        {"monster_alien_slave", 4},
+                        {"monster_headcrab", 6},
+                        {"monster_bullchicken", 3},
+                        {"monster_sentry", 3},
+                        {"monster_barnacle", 1},
+                    }
+                },
+                { "c2a2e", new Dictionary<string, int>
+                    {
+                        {"monster_human_grunt", 11},
+                        {"monster_alien_slave", 6},
+                        {"monster_headcrab", 2},
+                    }
+                },
+                { "c2a2f", new Dictionary<string, int>
+                    {
+                        {"monster_human_grunt", 3},
+                        {"monster_sentry", 2},
+                    }
+                },
+                { "c2a2g", new Dictionary<string, int>
+                    {
+                        {"monster_sentry", 4},
+                        {"monster_zombie", 2},
+                        {"monster_human_grunt", 4},
+                        {"func_breakable", 1},
+                    }
+                },
+                { "c2a2h", new Dictionary<string, int>
+                    {
+                        {"monster_human_grunt", 5},
+                    }
+                },
+                { "c2a3", new Dictionary<string, int>
+                    {
+                        {"monster_human_grunt", 3},
+                        {"monster_zombie", 2},
+                    }
+                },
+                { "c2a3a", new Dictionary<string, int>
+                    {
+                        {"monster_ichthyosaur", 1},
+                        {"monster_barnacle", 7},
+                    }
+                },
+                { "c2a3b", new Dictionary<string, int>
+                    {
+                        {"monster_barnacle", 6},
+                        {"monster_alien_slave", 3},
+                        {"monster_ichthyosaur", 2},
+                        {"monster_bullchicken", 3},
+                        {"monster_headcrab", 1},
+                    }
+                },
+                { "c2a3c", new Dictionary<string, int>
+                    {
+                        {"monster_alien_slave", 6},
+                        {"monster_headcrab", 6},
+                    }
+                },
+                { "c2a3d", new Dictionary<string, int>
+                    {
+                        {"monster_alien_slave", 4},
+                        {"monster_human_assassin", 3},
+                    }
+                },
+                { "c2a4", new Dictionary<string, int>
+                    {
+                        {"monster_headcrab", 2},
+                    }
+                },
+                { "c2a4a", new Dictionary<string, int>
+                    {
+                        {"monster_headcrab", 4},
+                        {"monster_barnacle", 4},
+                    }
+                },
+                { "c2a4b", new Dictionary<string, int>
+                    {
+                        {"monster_bullchicken", 4},
+                    }
+                },
+                { "c2a4c", new Dictionary<string, int>
+                    {
+                        {"monster_headcrab", 4},
+                        {"monster_bullchicken", 1},
+                        {"monster_barnacle", 6},
+                    }
+                },
+                { "c2a4d", new Dictionary<string, int>
+                    {
+                        {"monster_houndeye", 5},
+                        {"monster_alien_grunt", 1},
+                        {"monster_headcrab", 5},
+                        {"monster_human_grunt", 1},
+                    }
+                },
+                { "c2a4e", new Dictionary<string, int>
+                    {
+                        {"monster_human_grunt", 11},
+                        {"monster_headcrab", 14},
+                        {"monster_alien_grunt", 2},
+                    }
+                },
+                { "c2a4f", new Dictionary<string, int>
+                    {
+                        {"monster_bullchicken", 3},
+                        {"monster_human_grunt", 4},
+                        {"monster_houndeye", 4},
+                    }
+                },
+                { "c2a4g", new Dictionary<string, int>
+                    {
+                        {"monster_human_grunt", 1},
+                        {"monster_sentry", 2},
+                    }
+                },
+                { "c2a5", new Dictionary<string, int>
+                    {
+                        {"monster_human_grunt", 5},
+                        {"monster_alien_slave", 1},
+                        {"monster_apache", 1},
+                        {"func_breakable", 1},
+                        {"monster_ichthyosaur", 1},
+                    }
+                },
+                { "c2a5w", new Dictionary<string, int>
+                    {
+                        {"monster_apache", 1},
+                        {"monster_headcrab", 3},
+                        {"monster_houndeye", 1},
+                        {"monster_human_grunt", 4},
+                    }
+                },
+                { "c2a5x", new Dictionary<string, int>
+                    {
+                        {"monster_headcrab", 6},
+                    }
+                },
+                { "c2a5a", new Dictionary<string, int>
+                    {
+                        {"monster_sentry", 1},
+                        {"monster_human_grunt", 5},
+                        {"monster_apache", 1},
+                        {"monster_headcrab", 1},
+                    }
+                },
+                { "c2a5b", new Dictionary<string, int>
+                    {
+                        {"monster_human_grunt", 9},
+                        {"func_breakable", 2},
+                    }
+                },
+                { "c2a5c", new Dictionary<string, int>
+                    {
+                        {"monster_alien_grunt", 1},
+                        {"monster_alien_slave", 1},
+                        {"func_breakable", 2},
+                    }
+                },
+                { "c2a5d", new Dictionary<string, int>
+                    {
+                        {"monster_headcrab", 3},
+                        {"monster_human_grunt", 2},
+                    }
+                },
+                { "c2a5e", new Dictionary<string, int>
+                    {
+                        {"monster_human_grunt", 10},
+                        {"monster_sentry", 1},
+                        {"func_breakable", 2},
+                        {"monster_alien_grunt", 8},
+                        {"monster_osprey", 1},
+                    }
+                },
+                { "c2a5f", new Dictionary<string, int>
+                    {
+                        {"monster_human_grunt", 21},
+                        {"monster_alien_slave", 11},
+                        {"monster_alien_grunt", 10},
+                        {"monster_headcrab", 5},
+                    }
+                },
+                { "c2a5g", new Dictionary<string, int>
+                    {
+                        {"monster_human_grunt", 2},
+                        {"monster_gargantua", 1},
+                    }
+                },
+                { "c3a1", new Dictionary<string, int>
+                    {
+                        {"monster_alien_grunt", 7},
+                        {"monster_alien_slave", 5},
+                        {"monster_turret", 1},
+                        {"monster_barnacle", 1},
+                    }
+                },
+                { "c3a1a", new Dictionary<string, int>
+                    {
+                        {"monster_headcrab", 5},
+                        {"monster_sentry", 3},
+                        {"monster_barnacle", 4},
+                        {"monster_ichthyosaur", 1},
+                        {"monster_human_grunt", 3},
+                        {"func_breakable", 1},
+                    }
+                },
+                { "c3a1b", new Dictionary<string, int>
+                    {
+                        {"monster_human_grunt", 5},
+                        {"monster_alien_grunt", 7},
+                        {"monster_alien_slave", 3},
+                        {"func_breakable", 1},
+                    }
+                },
+                { "c3a2e", new Dictionary<string, int>
+                    {
+                        {"monster_headcrab", 6},
+                        {"monster_bullchicken", 1},
+                        {"monster_human_assassin", 4},
+                    }
+                },
+                { "c3a2", new Dictionary<string, int>
+                    {
+                        {"monster_alien_grunt", 4},
+                        {"monster_headcrab", 6},
+                        {"monster_bullchicken", 1},
+                    }
+                },
+                { "c3a2a", new Dictionary<string, int>
+                    {
+                        {"monster_barnacle", 6},
+                        {"monster_alien_grunt", 11},
+                        {"monster_headcrab", 5},
+                        {"monster_alien_slave", 7},
+                    }
+                },
+                { "c3a2b", new Dictionary<string, int>
+                    {
+                        {"monster_alien_slave", 4},
+                    }
+                },
+                { "c3a2c", new Dictionary<string, int>
+                    {
+                        {"monster_alien_grunt", 5},
+                        {"monster_alien_slave", 2},
+                        {"monster_headcrab", 5},
+                    }
+                },
+                { "c3a2d", new Dictionary<string, int>
+                    {
+                        {"monster_headcrab", 3},
+                        {"monster_alien_controller", 3},
+                    }
+                },
+                { "c4a1", new Dictionary<string, int>
+                    {
+                        {"monster_alien_slave", 2},
+                        {"monster_houndeye", 5},
+                        {"func_breakable", 4},
+                    }
+                },
+                { "c4a2", new Dictionary<string, int>
+                    {
+                        {"monster_headcrab", 2},
+                    }
+                },
+                { "c4a2a", new Dictionary<string, int>
+                    {
+                        {"monster_headcrab", 3},
+                    }
+                },
+                { "c4a2b", new Dictionary<string, int>
+                    {
+                        {"monster_bigmomma", 1},
+                    }
+                },
+                { "c4a1a", new Dictionary<string, int>
+                    {
+                        {"monster_alien_slave", 6},
+                        {"monster_alien_controller", 5},
+                        {"monster_headcrab", 2},
+                        {"monster_barnacle", 3},
+                        {"monster_bullchicken", 1},
+                    }
+                },
+                { "c4a1b", new Dictionary<string, int>
+                    {
+                        {"monster_alien_grunt", 6},
+                        {"monster_alien_slave", 5},
+                        {"monster_alien_controller", 3},
+                        {"monster_gargantua", 1},
+                        {"monster_barnacle", 3},
+                    }
+                },
+                { "c4a1c", new Dictionary<string, int>
+                    {
+                        {"monster_alien_slave", 6},
+                        {"monster_alien_controller", 2},
+                    }
+                },
+                { "c4a1d", new Dictionary<string, int>
+                    {
+                        {"monster_alien_slave", 18},
+                        {"monster_alien_controller", 9},
+                        {"monster_alien_grunt", 12},
+                    }
+                },
+                { "c4a1e", new Dictionary<string, int>
+                    {
+                        {"monster_alien_slave", 13},
+                        {"monster_alien_controller", 9},
+                        {"monster_alien_grunt", 8},
+                    }
+                },
+                { "c4a3", new Dictionary<string, int>
+                    {
+                        {"monster_alien_controller", 8},
+                        {"monster_alien_slave", 3},
+                        {"monster_ichthyosaur", 1},
+                        {"monster_gargantua", 1},
+                        {"monster_nihilanth", 1},
+                    }
+                },
+            };
+
+            Dictionary<string, Dictionary<string, int>> monsterCountsByMap = new Dictionary<string, Dictionary<string, int>>();
+
+            foreach (var map in MonsterTypeKillByMap)
+            {
+                foreach (var kill in MonsterTypeKillByMap[map.Key])
+                {
+                    if (!monsterCountsByMap.ContainsKey(map.Key))
+                    {
+                        monsterCountsByMap.Add(map.Key, new Dictionary<string, int>());
+                    }
+                    if (!monsterCountsByMap[map.Key].ContainsKey(kill.Item2))
+                    {
+                        monsterCountsByMap[map.Key].Add(kill.Item2, 0);
+                    }
+                    monsterCountsByMap[map.Key][kill.Item2]++;
+                }
+            }
+
+            foreach (var map in referenceMonsterCountsByMap)
+            {
+                foreach (var monsterTypeKills in referenceMonsterCountsByMap[map.Key])
+                {
+                    if (!monsterCountsByMap.ContainsKey(map.Key) || !monsterCountsByMap[map.Key].ContainsKey(monsterTypeKills.Key))
+                    {
+                        textBuffer.Append(
+                            "HL100: Expected " +
+                            referenceMonsterCountsByMap[map.Key][monsterTypeKills.Key] + " " +
+                            monsterTypeKills.Key + " kills on " +
+                            map.Key + ". Found no kills for this monster type on this map in demos.\n",
+                            Color.Yellow);
+                        hasWarnings = true;
+                    }
+
+                    else if (monsterCountsByMap[map.Key][monsterTypeKills.Key] != referenceMonsterCountsByMap[map.Key][monsterTypeKills.Key])
+                    {
+                        textBuffer.Append(
+                            "HL100: Expected " +
+                            referenceMonsterCountsByMap[map.Key][monsterTypeKills.Key] + " " +
+                            monsterTypeKills.Key + " kills on " +
+                            map.Key + ". Got " +
+                            monsterCountsByMap[map.Key][monsterTypeKills.Key] + " kills.\n",
+                            Color.Yellow);
+                        hasWarnings = true;
+                    }
+                }
+            }
+
+            if (hasErrors)
+            {
+                textBuffer.Append("\nHL100: Verification did not pass.\n", Color.Red);
+            }
+            else if (hasWarnings)
+            {
+                textBuffer.Append("\nHL100: Verification passed with warnings. Note that report_to_demo commands can sometimes get missed.\n", Color.Yellow);
+            }
+            else
+            {
+                textBuffer.Append("\nHL100: Verification passed.\n", Color.Green);
             }
         }
 
@@ -170,7 +803,6 @@ namespace VolvoWrench.Demo_Stuff.GoldSource
             Df.Clear();
             MonsterTypeKillByNumber.Clear();
             MonsterTypeKillByMap.Clear();
-            MonsterNameKillByMap.Clear();
             mrtb.Text = $@"Please wait. Parsing demos... 0/{files.Length}";
             var curr = 0;
             foreach (var dt in files.Where(file => File.Exists(file) && Path.GetExtension(file) == ".dem"))
@@ -1220,18 +1852,6 @@ Human readable time:        {TimeSpan.FromSeconds(Df.Sum(x => x.Value.GsDemoInfo
                                                     }
                                                 }
                                             }
-
-                                            foreach (var map in MonsterNameKillByMap)
-                                            {
-                                                for (int j = 0; j < MonsterNameKillByMap[map.Key].Count(); j++)
-                                                {
-                                                    if (MonsterNameKillByMap[map.Key][j].Item1 == oldUUID)
-                                                    {
-                                                        MonsterNameKillByMap[map.Key].RemoveAt(j);
-                                                        j--;
-                                                    }
-                                                }
-                                            }
                                         }
 
                                         string killUUID = Guid.NewGuid().ToString();
@@ -1240,12 +1860,7 @@ Human readable time:        {TimeSpan.FromSeconds(Df.Sum(x => x.Value.GsDemoInfo
                                         {
                                             MonsterTypeKillByMap.Add(monsterKilledOnMap, new List<(string, string, string)>());
                                         }
-                                        if (!MonsterNameKillByMap.ContainsKey(monsterKilledOnMap))
-                                        {
-                                            MonsterNameKillByMap.Add(monsterKilledOnMap, new List<(string, string, string)>());
-                                        }
-                                        MonsterTypeKillByMap[monsterKilledOnMap].Append((killUUID, monsterType, info.Key));
-                                        MonsterNameKillByMap[monsterKilledOnMap].Append((killUUID, monsterName, info.Key));
+                                        MonsterTypeKillByMap[monsterKilledOnMap].Add((killUUID, monsterType, info.Key));
                                     } catch (Exception e)
                                     {
                                         textBuffer.Append("\tError parsing hl100 report_to_demo in " + info.Key + ": " + e.ToString() + "\n");
