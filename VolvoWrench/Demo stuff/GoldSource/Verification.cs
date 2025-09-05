@@ -28,6 +28,7 @@ namespace VolvoWrench.Demo_Stuff.GoldSource
         /// </summary>
         public static readonly Color IllegalColor = Color.LightCoral;
         public static readonly Color WarningColor = Color.Yellow;
+        public static readonly Color GoodColor = Color.Green;
 
         /// <summary>
         ///     Buffer holds strings to be printed
@@ -734,7 +735,7 @@ namespace VolvoWrench.Demo_Stuff.GoldSource
             {
                 if (!MonsterTypeKillByNumber.ContainsKey(i))
                 {
-                    textBuffer.Append("HL100: Missing kill #" + i + "\n", Color.Yellow);
+                    textBuffer.Append("HL100: Missing kill #" + i + "\n", WarningColor);
                     hasWarnings = true;
                 }
             }
@@ -744,7 +745,7 @@ namespace VolvoWrench.Demo_Stuff.GoldSource
                 // Add error to last demo for extra kills
                 string err = "HL100: Extra kills in run! There should only be " + totalKills + ".\n";
                 Df[files.Last()].GsDemoInfo.ParsingErrors.Add(err);
-                textBuffer.Append(err, Color.Red);
+                textBuffer.Append(err, IllegalColor);
                 hasErrors = true;
             }
 
@@ -754,7 +755,7 @@ namespace VolvoWrench.Demo_Stuff.GoldSource
                 // Add error to last demo for missing kill
                 string err = "HL100: Last kill is not nihilanth or there is no " + totalKills + "th kill!\n";
                 Df[files.Last()].GsDemoInfo.ParsingErrors.Add(err);
-                textBuffer.Append(err, Color.Red);
+                textBuffer.Append(err, IllegalColor);
                 hasErrors = true;
             }
             else
@@ -773,7 +774,7 @@ namespace VolvoWrench.Demo_Stuff.GoldSource
                             referenceMonsterCountsByMap[map.Key][monsterTypeKills.Key] + " " +
                             monsterTypeKills.Key + " kills on " +
                             map.Key + ". Found no kills for this monster type on this map in demos.\n",
-                            Color.Yellow);
+                            WarningColor);
                         hasWarnings = true;
                     }
 
@@ -785,7 +786,7 @@ namespace VolvoWrench.Demo_Stuff.GoldSource
                             monsterTypeKills.Key + " kills on " +
                             map.Key + ". Got " +
                             monsterCountsByMap[map.Key][monsterTypeKills.Key] + " kills.\n",
-                            Color.Yellow);
+                            WarningColor);
                         hasWarnings = true;
                     }
                 }
@@ -793,15 +794,15 @@ namespace VolvoWrench.Demo_Stuff.GoldSource
 
             if (hasErrors)
             {
-                textBuffer.Append("\nHL100: Verification did not pass.\n", Color.Red);
+                textBuffer.Append("\nHL100: Verification did not pass.\n", IllegalColor);
             }
             else if (hasWarnings)
             {
-                textBuffer.Append("\nHL100: Verification passed with warnings. Note that report_to_demo commands can sometimes get missed.\n", Color.Yellow);
+                textBuffer.Append("\nHL100: Verification passed with warnings. Note that report_to_demo commands can sometimes get missed.\n", WarningColor);
             }
             else
             {
-                textBuffer.Append("\nHL100: Verification passed.\n", Color.Green);
+                textBuffer.Append("\nHL100: Verification passed.\n", GoodColor);
             }
         }
 
@@ -1793,7 +1794,8 @@ Human readable time:        {TimeSpan.FromSeconds(Df.Sum(x => x.Value.GsDemoInfo
                                         textBuffer.Append("\t" + command + "\n", WarningColor);
                                     }
                                 }
-                                if (command.ToUpper().Contains("HOST_")
+                                if (!command.ToUpper().StartsWith("REPORT_TO_DEMO") &&
+                                   ( command.ToUpper().Contains("HOST_")
                                   || command.ToUpper().Contains("SK_")
                                   || command.ToUpper().Contains("CHASE")
                                   || command.ToUpper().Contains("SKILL")
@@ -1811,7 +1813,7 @@ Human readable time:        {TimeSpan.FromSeconds(Df.Sum(x => x.Value.GsDemoInfo
                                   || command.ToUpper().Contains("SCR_")
                                   || command.ToUpper().StartsWith("C_")
                                   || command.ToUpper().Contains("CAM")
-                                  || command.ToUpper().Contains("JOY"))
+                                  || command.ToUpper().Contains("JOY")))
                                 {
                                     textBuffer.Append("\t" + "Disallowed: " + command + " — Frame: " + i + "\n", IllegalColor);
                                 }
